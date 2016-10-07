@@ -24,3 +24,5 @@ _testmain.go
 *.prof
 build.zip
 .terraform
+*.tfstate
+*.tfstate.backup
