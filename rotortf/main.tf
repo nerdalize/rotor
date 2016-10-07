@@ -48,6 +48,11 @@ output "rest_api_id" {
   value = "${aws_api_gateway_rest_api.rotor.id}"
 }
 
+//this allows the stage to wait for the resource to be actually integration
+output "aws_api_gateway_method" {
+  value = "${aws_api_gateway_integration.proxy_ANY_integration.resource_id}"
+}
+
 #lambda function needs a role that is able to use other AWS services
 resource "aws_iam_role" "rotor_function" {
   name = "${var.role_function_name}"
