@@ -1,5 +1,3 @@
-variable "aws_access_key" {}
-variable "aws_secret_key" {}
 variable "aws_region" {}
 
 //Name of the function role that is created
@@ -48,12 +46,6 @@ EOF
 //Outputs the rest API for other resources to integrate with
 output "rest_api_id" {
   value = "${aws_api_gateway_rest_api.rotor.id}"
-}
-
-provider "aws" {
-  region = "${var.aws_region}"
-  access_key = "${var.aws_access_key}"
-  secret_key = "${var.aws_secret_key}"
 }
 
 #lambda function needs a role that is able to use other AWS services
