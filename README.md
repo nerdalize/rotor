@@ -1,5 +1,10 @@
-# rotor
-[![GoDoc](https://godoc.org/github.com/nerdalize/rotor/rotor?status.svg)](https://godoc.org/github.com/nerdalize/rotor/rotor)
+# rotor [![GoDoc](https://godoc.org/github.com/nerdalize/rotor/rotor?status.svg)](https://godoc.org/github.com/nerdalize/rotor/rotor)
+
+_Rotor_ is a minimalistic toolset that make it easy to run HTTP-serving logic written in Go in a serverless setup using [AWS Lambda](http://docs.aws.amazon.com/lambda/latest/dg/welcome.html) and the [API Gateway](https://aws.amazon.com/api-gateway/). It comes with the following:
+
+ - The Go library `github.com/nerdalize/rotor/rotor` that can used to make any implementation of [http.Handler](https://golang.org/pkg/net/http/#Handler) serve its HTTP in a Lambda function.
+ - A [go generator](https://blog.golang.org/generate) that builds and packages your Go program into a .zip file that AWS Lambda expects by wrapping your executable with a NodeJS script.
+ - A [Terraform module](https://www.terraform.io/docs/modules/usage.html) that uploads the .zip package and creates the nessesary API Gateway resources to proxy requests to the Lambda function.
 
 ## Getting started
 To get started you'll need to have [Terraform](https://www.terraform.io/downloads.html) version >= 0.7.5 installed and available in your `$PATH`, you'll also need to have the Go 1.7 SDK installed with your `$GOPATH` correctly configured.  
@@ -41,9 +46,9 @@ To get started you'll need to have [Terraform](https://www.terraform.io/download
 	```
 
 
-### Creating an API Gateway
+### Uploading and Creating the API Gateway
 
-1. To expose your HTTP server through the AWS API Gateway; Rotor comes with a [Terraform module](https://www.terraform.io/docs/modules/usage.html) to do this. Create a `main.tf` file that looks like this:
+1. To expose your HTTP service through the AWS API Gateway Rotor comes with a [Terraform module](https://www.terraform.io/docs/modules/usage.html). Create a `main.tf` file that looks like this:
 
 	```hcl
 	variable "aws_region" {
@@ -79,7 +84,7 @@ To get started you'll need to have [Terraform](https://www.terraform.io/download
 	```
 
 ### Publishing the API
-To publish the API to the Internet we'll need to add a staging Terraform resources.
+To publish the API to the Internet we'll need to add a `aws_api_gateway_deployment` Terraform resource.
 
 1. Re-open your `main.tf` and add the following:
 
@@ -96,7 +101,7 @@ To publish the API to the Internet we'll need to add a staging Terraform resourc
 	}
 	```
 
-	_NOTE: Unfortunately, the hack is necessary to make sure the stage is not created before the actual resources and methods are created._
+	_NOTE: Unfortunately, this hack is necessary to make sure the deployment is not created before the actual resources and methods are available._
 
 
 2. Then re-apply the infrastructre, the API endpoint should be printend to the screen.
@@ -107,7 +112,7 @@ To publish the API to the Internet we'll need to add a staging Terraform resourc
 	api_endpoint=<your_endpoint>
 	```
 
-3. The API should now be reachable, without a path the gateway will return unauthorized but with any path the request will be proxied to the Lambda function and handles by our Go code:
+3. The API should now be reachable, without a path the gateway will return unauthorized but with _any_ path the request will be proxied to the Lambda function and handles by our Go code:
 
 	```
 	curl <your_endpoint>/foobar
@@ -121,8 +126,14 @@ To publish the API to the Internet we'll need to add a staging Terraform resourc
 	```
 
 ## What Nexts
+The _Rotor_ tools aims to play well with your current workflow and other tools you might be using:
 
-- Uploading a new change
-- Using Go Ecosystem handlers
-- Handling other events
-- Customize build flags
+- _TODO: Integrating with Apex_
+- _TODO: Uploading a new change_
+- _TODO: Using Go Ecosystem handlers_
+- _TODO: Handling other events_
+- _TODO: Customize build flags_
+
+## TODO
+
+- Check performance of the terrafomr gateway setup (latency)
