@@ -1,8 +1,8 @@
 # rotor [![GoDoc](https://godoc.org/github.com/nerdalize/rotor/rotor?status.svg)](https://godoc.org/github.com/nerdalize/rotor/rotor)
 
-_Rotor_ is a minimalistic toolset that makes it easy to run HTTP-serving logic written in Go in a serverless setup using [AWS Lambda](http://docs.aws.amazon.com/lambda/latest/dg/welcome.html) and the [API Gateway](https://aws.amazon.com/api-gateway/). It comes with the following:
+_Rotor_ is a minimalistic toolset that makes it easy to run HTTP-serving logic written in Go for a serverless setup using [AWS Lambda](http://docs.aws.amazon.com/lambda/latest/dg/welcome.html) and the [API Gateway](https://aws.amazon.com/api-gateway/). It comes with the following:
 
- - A Go library that can used to make any implementation of [http.Handler](https://golang.org/pkg/net/http/#Handler) serve its HTTP output from a Lambda function.
+ - A Go library that can be used to make any implementation of [http.Handler](https://golang.org/pkg/net/http/#Handler) serve its HTTP output from a Lambda function.
  - A [go generator](https://blog.golang.org/generate) that builds and packages your Go program into a .zip file that AWS Lambda expects by wrapping the executable with a NodeJS script.
  - A [Terraform module](https://www.terraform.io/docs/modules/usage.html) that uploads the .zip package and creates the nessesary API Gateway resources to proxy requests to the Lambda function using the AWS_PROXY integration.
 
@@ -146,7 +146,8 @@ The _Rotor_ tools aims to play well with your current workflow and other tools y
 
 - _TODO: Guide: Integrating with Apex_
 - _TODO: Guide: Customize build flags_
-- _TODO: Guide: Accessing the Raw Lambda event and context__
+- _TODO: Guide: Accessing the Raw Lambda event and context_
+- _TODO: Reference: terraform module variables_
 
 
 ## Terraform AWS Policy
