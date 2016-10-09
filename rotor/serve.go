@@ -21,30 +21,25 @@ var LambdaContextContextKey = "lambda-context"
 //ProxyResponse is a lambda message with specific fields that are expected by the API Gateway
 type ProxyResponse struct {
 	StatusCode int               `json:"statusCode"`
-	Headers    map[string]string `json:"headers"`
 	Body       string            `json:"body"`
+	Headers    map[string]string `json:"headers"`
 }
 
-//bufferedResponse implements the response writer interface but buffers the body
+//bufferedResponse implements the response writer interface but buffers the body which
+//is necessary for the creating a JSON formatted Lambda response anyway
 type bufferedResponse struct {
 	statusCode int
 	header     http.Header
-
 	*bytes.Buffer
 }
 
-func (br *bufferedResponse) Header() http.Header {
-	return br.header
-}
-
-func (br *bufferedResponse) WriteHeader(status int) {
-	br.statusCode = status
-}
+func (br *bufferedResponse) Header() http.Header    { return br.header }
+func (br *bufferedResponse) WriteHeader(status int) { br.statusCode = status }
 
 //Output represents an outgoing message from the Lambda function to the API gateway
 type Output struct {
-	Error string         `json:"error,omitempty"`
-	Value *ProxyResponse `json:"value"`
+	Error string      `json:"error,omitempty"`
+	Value interface{} `json:"value,omitempty"`
 }
 
 //ProxyRequest is a Lambda event that comes from the API Gateway with the lambda proxy integration
@@ -61,25 +56,48 @@ type ProxyRequest struct {
 
 //Input represents an incoming message from the API Gateway to the Lambda function
 type Input struct {
-	Context interface{}   `json:"context"` //this is passed as an opaque value to the request context
-	Event   *ProxyRequest `json:"event"`
+	Context interface{}     `json:"context"` //this is passed as an opaque value to the request context
+	Event   json.RawMessage `json:"event"`
 }
 
 func outputErr(format string, a ...interface{}) (out *Output) {
 	return &Output{Error: fmt.Sprintf(format, a...)}
 }
 
-func handle(in *Input, h http.Handler) (out *Output, err error) {
+//A Handler responds to Lambda Input with Lambda Output
+type Handler interface {
+	HandleEvent(in *Input) (out *Output, err error)
+}
+
+//GatewayProxyHandler can handle lambda input from the AWS api gateway configured
+//with an integration type of AWS_PROXY
+type GatewayProxyHandler struct {
+	h http.Handler
+}
+
+//HandleEvent will transform a proxy event into a standard lib http request and
+//fills the context.Context of the request with Lambda information
+func (gwh *GatewayProxyHandler) HandleEvent(in *Input) (out *Output, err error) {
 	if in.Event == nil {
-		return nil, fmt.Errorf("Decoded input has no event key")
+		return nil, fmt.Errorf("decoded input has no event key")
 	}
 
-	r, err := http.NewRequest(in.Event.HTTPMethod, in.Event.Path, bytes.NewBufferString(in.Event.Body))
+	preq := &ProxyRequest{}
+	err = json.Unmarshal(in.Event, &preq)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to turn event %+v into http request: %v", in.Event, err)
+		return nil, fmt.Errorf("failed to unmarshal '%s' as proxy event: %v", string(in.Event), err)
 	}
 
-	for k, val := range in.Event.Headers {
+	if gwh.h == nil {
+		return &Output{Value: &ProxyResponse{http.StatusNotFound, "404 Not Found", nil}}, nil
+	}
+
+	r, err := http.NewRequest(preq.HTTPMethod, preq.Path, bytes.NewBufferString(preq.Body))
+	if err != nil {
+		return nil, fmt.Errorf("failed to turn event %+v into http request: %v", preq, err)
+	}
+
+	for k, val := range preq.Headers {
 		for _, v := range strings.Split(val, ",") {
 			r.Header.Add(k, strings.TrimSpace(v))
 		}
@@ -96,7 +114,7 @@ func handle(in *Input, h http.Handler) (out *Output, err error) {
 		Buffer:     bytes.NewBuffer(nil),
 	}
 
-	h.ServeHTTP(w, r) //down the middleware chain
+	gwh.h.ServeHTTP(w, r) //down the middleware chain
 
 	val := &ProxyResponse{
 		StatusCode: w.statusCode,
@@ -111,31 +129,45 @@ func handle(in *Input, h http.Handler) (out *Output, err error) {
 	return &Output{Value: val}, nil
 }
 
-//Serve accepts incoming Lambda JSON on Reader 'in' an writes response JSON on
-//writer 'out'.
-func Serve(in io.Reader, out io.Writer, h http.Handler) {
+//Server serves Lambda output based on lambda input
+type Server struct {
+	Handler Handler
+}
+
+//ServeHTTP accepts incoming Lambda JSON on Reader 'in' an writes response JSON on
+//writer 'out', it only takes Lambda events that come from the AWS Gateway configured
+//with the AWS_PROXY integration types. Serve returns an error whenever it is
+//no longer able to serve output
+func ServeHTTP(r io.Reader, w io.Writer, h http.Handler) (err error) {
+	srv := &GatewayProxyHandler{h: h}
+
 	logs := log.New(os.Stderr, "", log.LstdFlags)
-	dec := json.NewDecoder(io.TeeReader(os.Stdin, os.Stderr))
-	enc := json.NewEncoder(io.MultiWriter(os.Stdout, os.Stderr))
+	dec := json.NewDecoder(r)
+	enc := json.NewEncoder(w)
 	for {
 		var out *Output
 		var in *Input
 		err := dec.Decode(&in)
 		if err == io.EOF {
-			break //stdin closed, nothing left to do
+			break //input ended, nothing left to serve
 		}
 
+		//decoder cannot recover from an invalid decode, write error and return err
 		if err != nil {
-			out = outputErr("failed to decode input: %v", err)
-		} else {
-			out, err = handle(in, h)
-			if err != nil {
-				out = outputErr("failed to handle input: %v", err)
-			}
+			err := fmt.Errorf("failed to decode input: %v", err)
+			enc.Encode(outputErr(err.Error()))
+			return err
+		}
 
-			if out == nil {
-				out = &Output{Value: &ProxyResponse{404, nil, "not found"}}
-			}
+		//handle the newly decoded input
+		out, err = srv.HandleEvent(in)
+		if err != nil {
+			out = outputErr("failed to handle input: %v", err)
+		}
+
+		//default output
+		if out == nil {
+			out = &Output{}
 		}
 
 		err = enc.Encode(out)
@@ -143,4 +175,6 @@ func Serve(in io.Reader, out io.Writer, h http.Handler) {
 			logs.Fatal(enc.Encode(outputErr("failed to encode output: %v", err)))
 		}
 	}
+
+	return nil
 }

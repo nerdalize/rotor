@@ -11,6 +11,7 @@ To get started you'll need to have [Terraform](https://www.terraform.io/download
 	
 	import (
 		"fmt"
+		"log"
 		"net/http"
 		"os"
 	
@@ -18,11 +19,11 @@ To get started you'll need to have [Terraform](https://www.terraform.io/download
 	)
 	
 	var handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, "hello from Rotor")
+		fmt.Fprintln(w, "hello from Rotor!")
 	})
 	
 	func main() {
-		rotor.Serve(os.Stdin, os.Stdout, handler)
+		log.Fatal(rotor.ServeHTTP(os.Stdin, os.Stdout, handler))
 	}
 	```
 
@@ -94,7 +95,7 @@ To publish the API to the Internet we'll need to add a staging Terraform resourc
 	}
 	```
 	
-	NOTE: The hack is necessary to make sure the stage is not created before the actual resources and methods are created.
+	_NOTE: Unfortunately, the hack is necessary to make sure the stage is not created before the actual resources and methods are created._
 	
 	
 2. Then re-apply the infrastructre, the API endpoint should be printend to the screen.
@@ -105,10 +106,10 @@ To publish the API to the Internet we'll need to add a staging Terraform resourc
 	api_endpoint=<your_endpoint>
 	```
 	
-3. The API should now be reachable, make sure to add some path: 
+3. The API should now be reachable, without a path the gateway will return unauthorized but with any path the request will be proxied to the Lambda function and handles by our Go code: 
 
 	```
-	curl <your_endpoint>
+	curl <your_endpoint>/foobar
 	> hello from Rotor
 	```
 	
@@ -117,3 +118,10 @@ To publish the API to the Internet we'll need to add a staging Terraform resourc
 	```
 	terraform destroy
 	```
+	
+## What Nexts
+
+- Uploading a new change 
+- Using Go Ecosystem handlers 
+- Handling other events
+- Customize build flags

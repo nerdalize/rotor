@@ -3,6 +3,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 
@@ -10,9 +11,9 @@ import (
 )
 
 var handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "hello from Rotor")
+	fmt.Fprintln(w, "hello from Rotor!")
 })
 
 func main() {
-	rotor.Serve(os.Stdin, os.Stdout, handler)
+	log.Fatal(rotor.ServeHTTP(os.Stdin, os.Stdout, handler))
 }
