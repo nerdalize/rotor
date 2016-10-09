@@ -1,10 +1,10 @@
 # rotor [![GoDoc](https://godoc.org/github.com/nerdalize/rotor/rotor?status.svg)](https://godoc.org/github.com/nerdalize/rotor/rotor)
 
-_Rotor_ is a minimalistic toolset that make it easy to run HTTP-serving logic written in Go in a serverless setup using [AWS Lambda](http://docs.aws.amazon.com/lambda/latest/dg/welcome.html) and the [API Gateway](https://aws.amazon.com/api-gateway/). It comes with the following:
+_Rotor_ is a minimalistic toolset that makes it easy to run HTTP-serving logic written in Go in a serverless setup using [AWS Lambda](http://docs.aws.amazon.com/lambda/latest/dg/welcome.html) and the [API Gateway](https://aws.amazon.com/api-gateway/). It comes with the following:
 
  - The Go library `github.com/nerdalize/rotor/rotor` that can used to make any implementation of [http.Handler](https://golang.org/pkg/net/http/#Handler) serve its HTTP in a Lambda function.
  - A [go generator](https://blog.golang.org/generate) that builds and packages your Go program into a .zip file that AWS Lambda expects by wrapping your executable with a NodeJS script.
- - A [Terraform module](https://www.terraform.io/docs/modules/usage.html) that uploads the .zip package and creates the nessesary API Gateway resources to proxy requests to the Lambda function.
+ - A [Terraform module](https://www.terraform.io/docs/modules/usage.html) that uploads the .zip package and creates the nessesary API Gateway resources to proxy requests to the Lambda function using the AWS_PROXY integration.
 
 ## Getting started
 To get started you'll need to have [Terraform](https://www.terraform.io/downloads.html) version >= 0.7.5 installed and available in your `$PATH`, you'll also need to have the Go 1.7 SDK installed with your `$GOPATH` correctly configured.  
