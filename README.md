@@ -2,8 +2,8 @@
 
 _Rotor_ is a minimalistic toolset that makes it easy to run HTTP-serving logic written in Go in a serverless setup using [AWS Lambda](http://docs.aws.amazon.com/lambda/latest/dg/welcome.html) and the [API Gateway](https://aws.amazon.com/api-gateway/). It comes with the following:
 
- - The Go library `github.com/nerdalize/rotor/rotor` that can used to make any implementation of [http.Handler](https://golang.org/pkg/net/http/#Handler) serve its HTTP in a Lambda function.
- - A [go generator](https://blog.golang.org/generate) that builds and packages your Go program into a .zip file that AWS Lambda expects by wrapping your executable with a NodeJS script.
+ - A Go library that can used to make any implementation of [http.Handler](https://golang.org/pkg/net/http/#Handler) serve its HTTP output from a Lambda function.
+ - A [go generator](https://blog.golang.org/generate) that builds and packages your Go program into a .zip file that AWS Lambda expects by wrapping the executable with a NodeJS script.
  - A [Terraform module](https://www.terraform.io/docs/modules/usage.html) that uploads the .zip package and creates the nessesary API Gateway resources to proxy requests to the Lambda function using the AWS_PROXY integration.
 
 ## Getting started
@@ -47,6 +47,8 @@ To get started you'll need to have [Terraform](https://www.terraform.io/download
 
 
 ### Uploading and Creating the API Gateway
+Publishing your HTTP service through an API Gateway requires requires access to AWS Credentials (for an example policy see below). Make sure you have your `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` ready (or set as an environment variable) before continuing. 
+
 
 1. To expose your HTTP service through the AWS API Gateway Rotor comes with a [Terraform module](https://www.terraform.io/docs/modules/usage.html). Create a `main.tf` file that looks like this:
 
@@ -118,22 +120,78 @@ To publish the API to the Internet we'll need to add a `aws_api_gateway_deployme
 	curl <your_endpoint>/foobar
 	> hello from Rotor
 	```
+	
+### Deploying New Changes
 
-4. To clean up all AWS resources, simply run:
+1. To publish changes you can simple re-run the generator to package and then re-apply using Terraform to deploy it:
 
 	```
-	terraform destroy
+	go generate ./main.go
 	```
+	```
+	terraform apply
+	``` 
+	
+
+### Removing the AWS infrastructure
+	
+1. To clean up all AWS resources, simply run:
+
+ ```
+ terraform destroy
+ ```	
 
 ## What Nexts
 The _Rotor_ tools aims to play well with your current workflow and other tools you might be using:
 
-- _TODO: Integrating with Apex_
-- _TODO: Uploading a new change_
-- _TODO: Using Go Ecosystem handlers_
-- _TODO: Handling other events_
-- _TODO: Customize build flags_
+- _TODO: Guide: Integrating with Apex_
+- _TODO: Guide: Customize build flags_
+- _TODO: Guide: Accessing the Raw Lambda event and context__
 
-## TODO
 
-- Check performance of the terrafomr gateway setup (latency)
+## Terraform AWS Policy
+The Terraform module requires AWS Credentials with permissions to manage role policies, api gateway and lambda resources. A policy for such a user could look like: 
+
+```
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "Stmt1476022435000",
+            "Effect": "Allow",
+            "Action": [
+                "iam:AttachRolePolicy",
+                "iam:CreatePolicy",
+                "iam:CreateRole",
+                "iam:DeletePolicy",
+                "iam:DeleteRole",
+                "iam:DeleteRolePolicy",
+                "iam:DetachRolePolicy",
+                "iam:GetPolicy",
+                "iam:GetRole",
+                "iam:GetRolePolicy",
+                "iam:ListAttachedRolePolicies",
+                "iam:ListInstanceProfilesForRole",
+                "iam:ListRolePolicies",
+                "iam:PassRole",
+                "iam:PutRolePolicy",
+                "lambda:AddPermission",
+                "lambda:CreateFunction",
+                "lambda:DeleteFunction",
+                "lambda:GetFunction",
+                "lambda:GetFunctionConfiguration",
+                "lambda:ListVersionsByFunction",
+                "lambda:GetFunctionConfiguration",
+                "lambda:GetPolicy",
+                "lambda:RemovePermission",
+                "lambda:UpdateFunctionCode",
+                "lambda:UpdateFunctionConfiguration",
+                "apigateway:*"
+            ],
+            "Resource": [
+                "*"
+            ]
+        }
+    ]
+}
+```
