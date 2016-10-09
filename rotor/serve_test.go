@@ -1,13 +1,35 @@
-package rotor
+package rotor_test
 
 import (
 	"bytes"
+	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/nerdalize/rotor/rotor"
 )
+
+// ServeHTTP is a simple
+func ExampleServeHTTP() {
+
+	//handler can be any router from the Go ecosystem
+	var handler http.Handler
+
+	handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		//the go 1.7 context.Context carries the lambda context
+		lambdaContext := r.Context().Value(rotor.LambdaContextContextKey)
+
+		fmt.Fprintf(w, "hello world, ctx: %+v", lambdaContext)
+	})
+
+	log.Fatal(rotor.ServeHTTP(os.Stdin, os.Stdout, handler))
+}
 
 func TestServeHTTP(t *testing.T) {
 	testCases := []struct {
@@ -29,7 +51,7 @@ func TestServeHTTP(t *testing.T) {
 			inr, inw := io.Pipe()
 			out := bytes.NewBuffer(nil)
 			go func() {
-				err := ServeHTTP(inr, out, tc.h)
+				err := rotor.ServeHTTP(inr, out, tc.h)
 				if tc.serveErr && err == nil {
 					t.Error("Expected serve to fail, but it didnt")
 				} else if !tc.serveErr && err != nil {

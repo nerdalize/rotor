@@ -6,20 +6,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
-	"os"
 	"strings"
 )
 
-//LambdaEventContextKey is the key in the context that holds the original
+//LambdaEventContextKey is the key in the request's context.Context that holds the original
 var LambdaEventContextKey = "lambda-event"
 
-//LambdaContextContextKey is the context key that holds the raw lambda context
+//LambdaContextContextKey is the key in the request's context.Context that holds the raw lambda context
 var LambdaContextContextKey = "lambda-context"
 
-//ProxyResponse is a lambda message with specific fields that are expected by the API Gateway
-type ProxyResponse struct {
+//proxyResponse is a lambda message with specific fields that are expected by the API Gateway
+type proxyResponse struct {
 	StatusCode int               `json:"statusCode"`
 	Body       string            `json:"body"`
 	Headers    map[string]string `json:"headers"`
@@ -42,8 +40,8 @@ type Output struct {
 	Value interface{} `json:"value,omitempty"`
 }
 
-//ProxyRequest is a Lambda event that comes from the API Gateway with the lambda proxy integration
-type ProxyRequest struct {
+//proxyRequest is a Lambda event that comes from the API Gateway with the lambda proxy integration
+type proxyRequest struct {
 	Resource              string            `json:"resource"`
 	Path                  string            `json:"path"`
 	HTTPMethod            string            `json:"httpMethod"`
@@ -82,14 +80,14 @@ func (gwh *GatewayProxyHandler) HandleEvent(in *Input) (out *Output, err error) 
 		return nil, fmt.Errorf("decoded input has no event key")
 	}
 
-	preq := &ProxyRequest{}
+	preq := &proxyRequest{}
 	err = json.Unmarshal(in.Event, &preq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal '%s' as proxy event: %v", string(in.Event), err)
 	}
 
 	if gwh.h == nil {
-		return &Output{Value: &ProxyResponse{http.StatusNotFound, "404 Not Found", nil}}, nil
+		return &Output{Value: &proxyResponse{http.StatusNotFound, "404 Not Found", nil}}, nil
 	}
 
 	r, err := http.NewRequest(preq.HTTPMethod, preq.Path, bytes.NewBufferString(preq.Body))
@@ -116,7 +114,7 @@ func (gwh *GatewayProxyHandler) HandleEvent(in *Input) (out *Output, err error) 
 
 	gwh.h.ServeHTTP(w, r) //down the middleware chain
 
-	val := &ProxyResponse{
+	val := &proxyResponse{
 		StatusCode: w.statusCode,
 		Body:       w.Buffer.String(),
 		Headers:    map[string]string{},
@@ -129,19 +127,9 @@ func (gwh *GatewayProxyHandler) HandleEvent(in *Input) (out *Output, err error) 
 	return &Output{Value: val}, nil
 }
 
-//Server serves Lambda output based on lambda input
-type Server struct {
-	Handler Handler
-}
-
-//ServeHTTP accepts incoming Lambda JSON on Reader 'in' an writes response JSON on
-//writer 'out', it only takes Lambda events that come from the AWS Gateway configured
-//with the AWS_PROXY integration types. Serve returns an error whenever it is
-//no longer able to serve output
-func ServeHTTP(r io.Reader, w io.Writer, h http.Handler) (err error) {
-	srv := &GatewayProxyHandler{h: h}
-
-	logs := log.New(os.Stderr, "", log.LstdFlags)
+//Serve accepts incoming Lambda JSON on Reader 'in' an writes response JSON on
+//writer 'out', it takes any Lambda Event.
+func Serve(r io.Reader, w io.Writer, h Handler) (err error) {
 	dec := json.NewDecoder(r)
 	enc := json.NewEncoder(w)
 	for {
@@ -160,7 +148,7 @@ func ServeHTTP(r io.Reader, w io.Writer, h http.Handler) (err error) {
 		}
 
 		//handle the newly decoded input
-		out, err = srv.HandleEvent(in)
+		out, err = h.HandleEvent(in)
 		if err != nil {
 			out = outputErr("failed to handle input: %v", err)
 		}
@@ -172,9 +160,18 @@ func ServeHTTP(r io.Reader, w io.Writer, h http.Handler) (err error) {
 
 		err = enc.Encode(out)
 		if err != nil {
-			logs.Fatal(enc.Encode(outputErr("failed to encode output: %v", err)))
+			return enc.Encode(outputErr("failed to encode output: %v", err))
 		}
 	}
 
 	return nil
+}
+
+//ServeHTTP accepts incoming Lambda JSON on Reader 'in' an writes response JSON on
+//writer 'out', it only takes Lambda events that come from the AWS Gateway configured
+//with the AWS_PROXY integration types. Serve returns an error whenever it is
+//no longer able to serve output
+func ServeHTTP(r io.Reader, w io.Writer, h http.Handler) (err error) {
+	srv := &GatewayProxyHandler{h: h}
+	return Serve(r, w, srv)
 }
