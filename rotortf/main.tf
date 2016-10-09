@@ -5,11 +5,6 @@ variable "role_function_name" {
   default = "rotor_function"
 }
 
-//Name of the Gateway invoke role that is created
-variable "role_invoke_name" {
-  default = "rotor_invoke"
-}
-
 //Name of the API Gateway API
 variable "api_name" {}
 
@@ -42,6 +37,9 @@ variable "func_policy" {
 }
 EOF
 }
+
+//Current account ID used for creating Lambda invoke policy
+data "aws_caller_identity" "current" {}
 
 //Outputs the rest API for other resources to integrate with
 output "rest_api_id" {
@@ -78,47 +76,6 @@ resource "aws_iam_role_policy" "rotor_function_policy" {
     policy = "${var.func_policy}"
 }
 
-#api gateway needs a role that is allowed to invoke lambda functions
-resource "aws_iam_role" "rotor_invoke" {
-    name = "${var.role_invoke_name}"
-    assume_role_policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "",
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "apigateway.amazonaws.com"
-      },
-      "Action": "sts:AssumeRole"
-    }
-  ]
-}
-EOF
-}
-
-resource "aws_iam_role_policy" "rotor_invoke_policy" {
-    name = "RotorAPIGatewayLambdaInvokePolicy"
-    role = "${aws_iam_role.rotor_invoke.id}"
-    policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Resource": [
-        "*"
-      ],
-      "Action": [
-        "lambda:InvokeFunction"
-      ]
-    }
-  ]
-}
-EOF
-}
-
 #the lambda function that will handle all API calls
 resource "aws_lambda_function" "rotor-api_prod_all" {
   function_name = "${var.func_name}"
@@ -150,6 +107,9 @@ resource "aws_api_gateway_method" "proxy_ANY" {
   resource_id = "${aws_api_gateway_resource.proxy.id}"
   http_method = "ANY"
   authorization = "NONE"
+  request_parameters = {
+    "method.request.path.proxy" = true
+  }
 }
 
 //proxy integration for the Lambda function
@@ -159,6 +119,14 @@ resource "aws_api_gateway_integration" "proxy_ANY_integration" {
   http_method = "ANY"
   type = "AWS_PROXY"
   uri = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${aws_lambda_function.rotor-api_prod_all.arn}/invocations"
-  credentials = "${aws_iam_role.rotor_invoke.arn}" //role the api gateway assumes while calling the integration
   integration_http_method = "POST"
+}
+
+//we use resource-based permission for gateway invokation to shave of 90ms latency
+resource "aws_lambda_permission" "allow_gateway" {
+    statement_id = "AllowExecutionFromRotorGateway"
+    action = "lambda:InvokeFunction"
+    function_name = "${aws_lambda_function.rotor-api_prod_all.function_name}"
+    principal = "apigateway.amazonaws.com"
+    source_arn = "arn:aws:execute-api:eu-west-1:${data.aws_caller_identity.current.account_id}:${aws_api_gateway_rest_api.rotor.id}/*/*/*"
 }
