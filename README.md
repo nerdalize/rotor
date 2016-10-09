@@ -1,4 +1,5 @@
 # rotor
+[![GoDoc](https://godoc.org/github.com/nerdalize/rotor/rotor?status.svg)](https://godoc.org/github.com/nerdalize/rotor/rotor)
 
 ## Getting started
 To get started you'll need to have [Terraform](https://www.terraform.io/downloads.html) version >= 0.7.5 installed and available in your `$PATH`, you'll also need to have the Go 1.7 SDK installed with your `$GOPATH` correctly configured.  
@@ -8,20 +9,20 @@ To get started you'll need to have [Terraform](https://www.terraform.io/download
 	```Go
 	//go:generate rotorgen build.zip
 	package main
-	
+
 	import (
 		"fmt"
 		"log"
 		"net/http"
 		"os"
-	
+
 		"github.com/nerdalize/rotor/rotor"
 	)
-	
+
 	var handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "hello from Rotor!")
 	})
-	
+
 	func main() {
 		log.Fatal(rotor.ServeHTTP(os.Stdin, os.Stdout, handler))
 	}
@@ -32,35 +33,35 @@ To get started you'll need to have [Terraform](https://www.terraform.io/download
 	```shell
 	go get -u github.com/nerdalize/rotor/rotorgen
 	```
-	
-3. Make sure `$GOPATH/bin` in in your `$PATH` and then use the generator to create the `build.zip` file in your current working directory: 
+
+3. Make sure `$GOPATH/bin` in in your `$PATH` and then use the generator to create the `build.zip` file in your current working directory:
 
 	```
 	go generate ./main.go
 	```
-	 
+
 
 ### Creating an API Gateway
 
-1. To expose your HTTP server through the AWS API Gateway; Rotor comes with a [Terraform module](https://www.terraform.io/docs/modules/usage.html) to do this. Create a `main.tf` file that looks like this: 
+1. To expose your HTTP server through the AWS API Gateway; Rotor comes with a [Terraform module](https://www.terraform.io/docs/modules/usage.html) to do this. Create a `main.tf` file that looks like this:
 
 	```hcl
 	variable "aws_region" {
 	  default = "eu-west-1" //You can set your preferred region here
 	}
-	
+
 	provider "aws" {
 	  region = "${var.aws_region}"
 	}
-	
+
 	module "api" {
 	  source = "github.com/nerdalize/rotor//rotortf"
 	  aws_region = "${var.aws_region}"
-	
+
 	  func_name = "hello-api_all"
 	  func_description = "A Rotor hello world function"
 	  func_zip_path = "build.zip"
-	
+
 	  api_name = "Hello"
 	  api_description = "A simple hello from Rotor"
 	}
@@ -70,58 +71,58 @@ To get started you'll need to have [Terraform](https://www.terraform.io/download
 	```
 	terraform get
 	```
-	
+
 3. Make sure you have AWS credentials with the correct permissions and then apply the infrastructure
 
 	```
 	terraform apply
 	```
-	
+
 ### Publishing the API
-To publish the API to the Internet we'll need to add a staging Terraform resources. 
+To publish the API to the Internet we'll need to add a staging Terraform resources.
 
 1. Re-open your `main.tf` and add the following:
 
-	
+
 	```hcl
 	resource "aws_api_gateway_deployment" "api" {
 	  rest_api_id = "${module.api.rest_api_id}"
 	  stage_name = "test"
 	  stage_description = "test (${module.api.aws_api_gateway_method})" //THIS HACK IS MANDATORY
 	}
-	
+
 	output "api_endpoint" {
 	  value = "https://${module.api.rest_api_id}.execute-api.${var.aws_region}.amazonaws.com/${aws_api_gateway_deployment.api.stage_name}"
 	}
 	```
-	
+
 	_NOTE: Unfortunately, the hack is necessary to make sure the stage is not created before the actual resources and methods are created._
-	
-	
+
+
 2. Then re-apply the infrastructre, the API endpoint should be printend to the screen.
 
 	```
-	terraform apply 
+	terraform apply
 	...
 	api_endpoint=<your_endpoint>
 	```
-	
-3. The API should now be reachable, without a path the gateway will return unauthorized but with any path the request will be proxied to the Lambda function and handles by our Go code: 
+
+3. The API should now be reachable, without a path the gateway will return unauthorized but with any path the request will be proxied to the Lambda function and handles by our Go code:
 
 	```
 	curl <your_endpoint>/foobar
 	> hello from Rotor
 	```
-	
+
 4. To clean up all AWS resources, simply run:
 
 	```
 	terraform destroy
 	```
-	
+
 ## What Nexts
 
-- Uploading a new change 
-- Using Go Ecosystem handlers 
+- Uploading a new change
+- Using Go Ecosystem handlers
 - Handling other events
 - Customize build flags
