@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -90,7 +91,18 @@ func (gwh *GatewayProxyHandler) HandleEvent(in *Input) (out *Output, err error) 
 		return &Output{Value: &proxyResponse{http.StatusNotFound, "404 Not Found", nil}}, nil
 	}
 
-	r, err := http.NewRequest(preq.HTTPMethod, preq.Path, bytes.NewBufferString(preq.Body))
+	loc, err := url.Parse(preq.Path)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to parse event path '%s' as url: %v", preq.Path, err)
+	}
+
+	q := loc.Query()
+	for k, param := range preq.QueryStringParameters {
+		q.Set(k, param)
+	}
+
+	loc.RawQuery = q.Encode()
+	r, err := http.NewRequest(preq.HTTPMethod, loc.String(), bytes.NewBufferString(preq.Body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to turn event %+v into http request: %v", preq, err)
 	}

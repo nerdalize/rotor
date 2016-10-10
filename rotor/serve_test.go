@@ -43,6 +43,7 @@ func TestServeHTTP(t *testing.T) {
 		{`{"event":{}}`, `{"value":{"statusCode":404,"body":"404 Not Found","headers":null}}`, false, nil},
 		{`{"event":{}}`, `{"value":{"statusCode":200,"body":"","headers":{}}}`, false, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
 		{`{"event":{"resource": 123}}`, `{"error":"failed to handle input: failed to unmarshal '{\"resource\": 123}' as proxy event: json: cannot unmarshal number into Go value of type string"}`, false, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
+		{`{"event":{"path": "/path", "queryStringParameters":{"email":"a@b"}}}`, `{"value":{"statusCode":200,"body":"/path?email=a%40b","headers":{}}}`, false, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { fmt.Fprintf(w, "%+v", r.URL.String()) })},
 	}
 
 	for _, tc := range testCases {
