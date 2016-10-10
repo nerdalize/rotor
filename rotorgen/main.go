@@ -13,14 +13,15 @@ import (
 
 func main() {
 	log.Printf("rotorgen %s", strings.Join(os.Args[1:], " "))
-	if len(os.Args) < 1 {
+	if len(os.Args) < 2 {
 		log.Fatalf("usage: rotorgen zip_path -- [extra_build_args]")
 	}
 
 	//everything after the double dash is passed to the build command as extra args
 	hasExtraArgs := false
+	extraFilesArgs := []string{}
 	appendArgs := []string{}
-	for _, a := range os.Args[1:] {
+	for _, a := range os.Args[2:] {
 		if a == "--" {
 			hasExtraArgs = true
 			continue
@@ -28,6 +29,8 @@ func main() {
 
 		if hasExtraArgs {
 			appendArgs = append(appendArgs, a)
+		} else {
+			extraFilesArgs = append(extraFilesArgs, a)
 		}
 	}
 
@@ -42,7 +45,7 @@ func main() {
 	}
 
 	appendArgs = append(appendArgs, goFilePath)
-	log.Printf("Generating lambda package for '%s', appended build args: %v", goFilePath, appendArgs)
+	log.Printf("Generating lambda package for '%s', extra files: %v, appended build args: %v", goFilePath, extraFilesArgs, appendArgs)
 	dir, err := ioutil.TempDir("", "rotorgen")
 	if err != nil {
 		log.Fatalf("Failed to create temporary working directory: %v", err)
@@ -116,6 +119,25 @@ func main() {
 		_, err = f.Write([]byte(file.Body))
 		if err != nil {
 			log.Fatal(err)
+		}
+	}
+
+	//add other files from disk
+	for _, fpath := range extraFilesArgs {
+		f, err := os.Open(fpath)
+		if err != nil {
+			log.Fatalf("Failed to open '%s' for adding to zip file: %v", fpath, err)
+		}
+
+		defer f.Close()
+		zipf, err := w.Create(fpath)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		_, err = io.Copy(zipf, f)
+		if err != nil {
+			log.Fatalf("Failed to copy content of '%s' to zip: %v", fpath, err)
 		}
 	}
 

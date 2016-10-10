@@ -47,7 +47,7 @@ To get started you'll need to have [Terraform](https://www.terraform.io/download
 
 
 ### Uploading and Creating the API Gateway
-Publishing your HTTP service through an API Gateway requires requires access to AWS Credentials (for an example policy see below). Make sure you have your `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` ready (or set as an environment variable) before continuing. 
+Publishing your HTTP service through an API Gateway requires requires access to AWS Credentials (for an example policy see below). Make sure you have your `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` ready (or set as an environment variable) before continuing.
 
 
 1. To expose your HTTP service through the AWS API Gateway Rotor comes with a [Terraform module](https://www.terraform.io/docs/modules/usage.html). Create a `main.tf` file that looks like this:
@@ -120,7 +120,7 @@ To publish the API to the Internet we'll need to add a `aws_api_gateway_deployme
 	curl <your_endpoint>/foobar
 	> hello from Rotor
 	```
-	
+
 ### Deploying New Changes
 
 1. To publish changes you can simple re-run the generator to package and then re-apply using Terraform to deploy it:
@@ -130,28 +130,28 @@ To publish the API to the Internet we'll need to add a `aws_api_gateway_deployme
 	```
 	```
 	terraform apply
-	``` 
-	
+	```
+
 
 ### Removing the AWS infrastructure
-	
+
 1. To clean up all AWS resources, simply run:
 
  ```
  terraform destroy
- ```	
+ ```
 
 ## What Nexts
 The _Rotor_ tools aims to play well with your current workflow and other tools you might be using:
 
 - _TODO: Guide: Integrating with Apex_
-- _TODO: Guide: Customize build flags_
+- _TODO: Guide: Customize build flags and adding other files to the zip_
 - _TODO: Guide: Accessing the Raw Lambda event and context_
 - _TODO: Reference: terraform module variables_
 
 
 ## Terraform AWS Policy
-The Terraform module requires AWS Credentials with permissions to manage role policies, api gateway and lambda resources. A policy for such a user could look like: 
+The Terraform module requires AWS Credentials with permissions to manage role policies, api gateway and lambda resources. A policy for such a user could look like:
 
 ```
 {
