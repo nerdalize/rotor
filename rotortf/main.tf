@@ -20,6 +20,14 @@ variable "func_description" {}
 //Path to the zipped Lambda function
 variable "func_zip_path" {}
 
+//Environment variables for the Lambda function
+variable "func_env" {
+  type = "map"
+  default = {
+    ROTOR_FUNC = "1"
+  }
+}
+
 //Policy that describes permissions of the Lambda function
 variable "func_policy" {
   default = <<EOF
@@ -86,6 +94,9 @@ resource "aws_lambda_function" "rotor-api_prod_all" {
   handler = "index.handler" //index.js exports.handler
   source_code_hash = "${base64sha256(file(var.func_zip_path))}"
   runtime = "nodejs4.3"
+  environment {
+    variables = "${var.func_env}"
+  }
 }
 
 //start of the API gateway
