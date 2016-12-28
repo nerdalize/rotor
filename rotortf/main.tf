@@ -5,6 +5,16 @@ variable "role_function_name" {
   default = "rotor_function"
 }
 
+//The Lambda function comes configured with this memory limit
+variable "func_memory" {
+  default = "128"
+}
+
+//The Lambda function comes configured with this timout
+variable "func_timeout" {
+  default = "3"
+}
+
 //Name of the API Gateway API
 variable "api_name" {}
 
@@ -89,7 +99,8 @@ resource "aws_lambda_function" "rotor-api_prod_all" {
   function_name = "${var.func_name}"
   description = "${var.func_description}"
   filename = "${var.func_zip_path}"
-
+  memory_size = "${var.func_memory}"
+  timeout = "${var.func_timeout}"
   role = "${aws_iam_role.rotor_function.arn}" //role the function assumes
   handler = "index.handler" //index.js exports.handler
   source_code_hash = "${base64sha256(file(var.func_zip_path))}"
