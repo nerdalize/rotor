@@ -197,7 +197,7 @@ The Terraform module requires AWS Credentials with permissions to manage role po
 }
 ```
 
-### Using wit the "external" provider
+### Using Rotor through the "external" provider
 Rotor comes with the `rotorpkg` executable that can be used directly with Terraform's
 [external provider](https://www.terraform.io/docs/providers/external) to package Go
 lambda functions. To install, run:
@@ -206,9 +206,9 @@ lambda functions. To install, run:
 go get -u github.com/nerdalize/rotor/rotorpkg
 ```
 
-It can then used as in your terraform files like this:
+It can then used as in your terraform files like so:
 
-```
+```hcl
 data "external" "lambda_pkg" {
   program = ["rotorpkg"]
   query = {
