@@ -196,3 +196,56 @@ The Terraform module requires AWS Credentials with permissions to manage role po
     ]
 }
 ```
+
+### Using wit the "external" provider
+Rotor comes with the `rotorpkg` executable that can be used directly with Terraform's
+[external provider](https://www.terraform.io/docs/providers/external) to package Go
+lambda functions. To install, run:
+
+```shell
+go get -u github.com/nerdalize/rotor/rotorpkg
+```
+
+It can then used as in your terraform files like this:
+
+```
+data "external" "lambda_pkg" {
+  program = ["rotorpkg"]
+  query = {
+    dir = "${path.module}"
+    ignore = ".git:*.tfstate:*.tfstate.backup:build.zip"
+    output = "${path.module}/build.zip"
+  }
+}
+
+resource "aws_iam_role" "func" {
+  name = "my-func-role"
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "lambda.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_lambda_function" "func" {
+  filename = "${data.external.lambda_pkg.result.zip_filename}"
+  source_code_hash = "${data.external.lambda_pkg.result.zip_base64sha256}"
+  role = "${aws_iam_role.func.arn}"
+
+  timeout = 3
+  memory_size = 128
+  function_name = "my-func"
+  description = "my-func-description"
+  handler = "index.handle"
+  runtime = "nodejs4.3"
+}
+```
