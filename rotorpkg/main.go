@@ -213,7 +213,8 @@ exports.handle = function(event, context, cb) {
 	context.callbackWaitsForEmptyEventLoop = false
 	procStdout.on('line', (line) => {
 		try {
-	    cb(null, JSON.parse(line))
+			var obj = JSON.parse(line)
+	    cb(obj.error, obj.value)
 	  } catch (e) {
 	    cb(e)
 	  }
