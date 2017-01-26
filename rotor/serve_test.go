@@ -23,7 +23,7 @@ func ExampleServeHTTP() {
 	handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		//the go 1.7 context.Context carries the lambda context
-		lambdaContext := r.Context().Value(rotor.LambdaContextContextKey)
+		lambdaContext := r.Context().Value(rotor.LambdaContextContextKey{})
 
 		fmt.Fprintf(w, "hello world, ctx: %+v", lambdaContext)
 	})

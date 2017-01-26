@@ -12,10 +12,10 @@ import (
 )
 
 //LambdaEventContextKey is the key in the request's context.Context that holds the original
-var LambdaEventContextKey = "lambda-event"
+type LambdaEventContextKey struct{}
 
 //LambdaContextContextKey is the key in the request's context.Context that holds the raw lambda context
-var LambdaContextContextKey = "lambda-context"
+type LambdaContextContextKey struct{}
 
 //proxyResponse is a lambda message with specific fields that are expected by the API Gateway
 type proxyResponse struct {
@@ -37,8 +37,8 @@ func (br *bufferedResponse) WriteHeader(status int) { br.statusCode = status }
 
 //Output represents an outgoing message from the Lambda function to the API gateway
 type Output struct {
-	Error string      `json:"error,omitempty"`
-	Value interface{} `json:"value,omitempty"`
+	Error string         `json:"error,omitempty"`
+	Value *proxyResponse `json:"value,omitempty"`
 }
 
 //proxyRequest is a Lambda event that comes from the API Gateway with the lambda proxy integration
@@ -114,8 +114,8 @@ func (gwh *GatewayProxyHandler) HandleEvent(in *Input) (out *Output, err error) 
 	}
 
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, LambdaEventContextKey, in.Event)
-	ctx = context.WithValue(ctx, LambdaContextContextKey, in.Context)
+	ctx = context.WithValue(ctx, LambdaEventContextKey{}, in.Event)
+	ctx = context.WithValue(ctx, LambdaContextContextKey{}, in.Context)
 	r = r.WithContext(ctx)
 
 	w := &bufferedResponse{
