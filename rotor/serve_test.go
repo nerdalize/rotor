@@ -28,7 +28,7 @@ func ExampleServeHTTP() {
 		fmt.Fprintf(w, "hello world, ctx: %+v", lambdaContext)
 	})
 
-	log.Fatal(rotor.ServeHTTP(os.Stdin, os.Stdout, handler))
+	log.Fatal(rotor.ServeHTTP(os.Stdin, os.Stdout, handler, rotor.ProxyConf{}))
 }
 
 func TestServeHTTP(t *testing.T) {
@@ -37,13 +37,65 @@ func TestServeHTTP(t *testing.T) {
 		output   string
 		serveErr bool
 		h        http.Handler
+		conf     rotor.ProxyConf
 	}{
-		{`{}`, `{"error":"failed to handle input: decoded input has no event key"}`, false, nil},
-		{`{aaa}`, `{"error":"failed to decode input: invalid character 'a' looking for beginning of object key string"}`, true, nil},
-		{`{"event":{}}`, `{"value":{"statusCode":404,"body":"404 Not Found","headers":null}}`, false, nil},
-		{`{"event":{}}`, `{"value":{"statusCode":200,"body":"","headers":{}}}`, false, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
-		{`{"event":{"resource": 123}}`, `{"error":"failed to handle input: failed to unmarshal '{\"resource\": 123}' as proxy event: json: cannot unmarshal number into Go struct field proxyRequest.resource of type string"}`, false, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
-		{`{"event":{"path": "/path", "queryStringParameters":{"email":"a@b"}}}`, `{"value":{"statusCode":200,"body":"/path?email=a%40b","headers":{}}}`, false, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { fmt.Fprintf(w, "%+v", r.URL.String()) })},
+		{
+			`{}`,
+			`{"error":"failed to handle input: decoded input has no event key"}`, false,
+			nil,
+			rotor.ProxyConf{},
+		},
+		{
+			`{aaa}`,
+			`{"error":"failed to decode input: invalid character 'a' looking for beginning of object key string"}`,
+			true,
+			nil,
+			rotor.ProxyConf{},
+		},
+		{
+			`{"event":{}}`,
+			`{"value":{"statusCode":404,"body":"404 Not Found","headers":null}}`, false,
+			nil,
+			rotor.ProxyConf{},
+		},
+		{
+			`{"event":{}}`,
+			`{"value":{"statusCode":200,"body":"","headers":{}}}`,
+			false,
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}),
+			rotor.ProxyConf{},
+		},
+		{
+			`{"event":{"resource": 123}}`,
+			`{"error":"failed to handle input: failed to unmarshal '{\"resource\": 123}' as proxy event: json: cannot unmarshal number into Go struct field proxyRequest.resource of type string"}`,
+			false,
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}),
+			rotor.ProxyConf{},
+		},
+		{
+			`{"event":{"path": "/path", "queryStringParameters":{"email":"a@b"}}}`,
+			`{"value":{"statusCode":200,"body":"/path?email=a%40b","headers":{}}}`, false,
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprintf(w, "%+v", r.URL.String())
+			}),
+			rotor.ProxyConf{},
+		},
+		{
+			`{"event":{"path": "/a/b/c/path", "queryStringParameters":{"email":"a@b"}}}`,
+			`{"value":{"statusCode":200,"body":"/path?email=a%40b","headers":{}}}`, false,
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprintf(w, "%+v", r.URL.String())
+			}),
+			rotor.ProxyConf{3},
+		},
+		{
+			`{"event":{"path": "/foo", "queryStringParameters":{"email":"a@b"}}}`,
+			`{"value":{"statusCode":200,"body":"/?email=a%40b","headers":{}}}`, false,
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprintf(w, "%+v", r.URL.String())
+			}),
+			rotor.ProxyConf{3},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -52,7 +104,7 @@ func TestServeHTTP(t *testing.T) {
 			inr, inw := io.Pipe()
 			out := bytes.NewBuffer(nil)
 			go func() {
-				err := rotor.ServeHTTP(inr, out, tc.h)
+				err := rotor.ServeHTTP(inr, out, tc.h, tc.conf)
 				if tc.serveErr && err == nil {
 					t.Error("Expected serve to fail, but it didnt")
 				} else if !tc.serveErr && err != nil {

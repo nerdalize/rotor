@@ -71,7 +71,8 @@ type Handler interface {
 //GatewayProxyHandler can handle lambda input from the AWS api gateway configured
 //with an integration type of AWS_PROXY
 type GatewayProxyHandler struct {
-	h http.Handler
+	h    http.Handler
+	conf ProxyConf
 }
 
 //HandleEvent will transform a proxy event into a standard lib http request and
@@ -88,12 +89,25 @@ func (gwh *GatewayProxyHandler) HandleEvent(in *Input) (out *Output, err error) 
 	}
 
 	if gwh.h == nil {
-		return &Output{Value: &proxyResponse{http.StatusNotFound, "404 Not Found", nil}}, nil
+		return &Output{
+			Value: &proxyResponse{http.StatusNotFound, "404 Not Found", nil},
+		}, nil
 	}
 
 	loc, err := url.Parse(preq.Path)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to parse event path '%s' as url: %v", preq.Path, err)
+	}
+
+	if gwh.conf.StripBaseMappings > 0 {
+		comps := strings.SplitN(
+			strings.TrimLeft(loc.Path, "/"),
+			"/", gwh.conf.StripBaseMappings+1)
+		if len(comps) >= gwh.conf.StripBaseMappings {
+			loc.Path = "/" + strings.Join(comps[gwh.conf.StripBaseMappings:], "/")
+		} else {
+			loc.Path = "/"
+		}
 	}
 
 	q := loc.Query()
@@ -179,11 +193,14 @@ func Serve(r io.Reader, w io.Writer, h Handler) (err error) {
 	return nil
 }
 
-//ServeHTTP accepts incoming Lambda JSON on Reader 'in' an writes response JSON on
-//writer 'out', it only takes Lambda events that come from the AWS Gateway configured
-//with the AWS_PROXY integration types. Serve returns an error whenever it is
-//no longer able to serve output
-func ServeHTTP(r io.Reader, w io.Writer, h http.Handler) (err error) {
-	srv := &GatewayProxyHandler{h: h}
+//ProxyConf allows configuring the proxy handler that translates HTTP request and responses used in proxying
+type ProxyConf struct {
+	//strip N amount of path components, use 0 for no stripping
+	StripBaseMappings int
+}
+
+//ServeHTTP accepts incoming Lambda JSON on Reader 'in' an writes response JSON on writer 'out', it only takes Lambda events that come from the AWS Gateway configured with the AWS_PROXY integration types. Serve returns an error whenever it is no longer able to serve output
+func ServeHTTP(r io.Reader, w io.Writer, h http.Handler, conf ProxyConf) (err error) {
+	srv := &GatewayProxyHandler{h: h, conf: conf}
 	return Serve(r, w, srv)
 }
