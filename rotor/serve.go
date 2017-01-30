@@ -37,8 +37,8 @@ func (br *bufferedResponse) WriteHeader(status int) { br.statusCode = status }
 
 //Output represents an outgoing message from the Lambda function to the API gateway
 type Output struct {
-	Error string         `json:"error,omitempty"`
-	Value *proxyResponse `json:"value,omitempty"`
+	Error string      `json:"error,omitempty"`
+	Value interface{} `json:"value,omitempty"`
 }
 
 //proxyRequest is a Lambda event that comes from the API Gateway with the lambda proxy integration
