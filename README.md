@@ -1,2 +1,2 @@
 # rotor
-A toolkit for developing Go applications on top of AWS Lambda et al.
+A minimalistic toolkit for developing Go applications on top of AWS Lambda.
