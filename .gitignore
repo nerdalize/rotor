@@ -22,7 +22,11 @@ _testmain.go
 *.exe
 *.test
 *.prof
-build.zip
-.terraform
+secrets.env
 *.tfstate
 *.tfstate.backup
+handler.zip
+.terraform
+.terraform.tfstate.lock.info
+vendor
+glide.lock
