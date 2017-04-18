@@ -4,11 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 // GatewayRequest represents an Amazon API Gateway Proxy Event.
@@ -50,13 +49,13 @@ func (gwh *GatewayHandler) HandleEvent(ctx context.Context, msg json.RawMessage)
 	req := &GatewayRequest{}
 	err = json.Unmarshal(msg, req)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to decode gateway request")
+		return nil, fmt.Errorf("failed to decode gateway request: %v", err)
 	}
 
 	//parse path
 	loc, err := url.Parse(req.Path)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse request path")
+		return nil, fmt.Errorf("failed to parse request path: %v", err)
 	}
 
 	//strip path base
@@ -79,7 +78,8 @@ func (gwh *GatewayHandler) HandleEvent(ctx context.Context, msg json.RawMessage)
 	loc.RawQuery = q.Encode()
 	r, err := http.NewRequest(req.HTTPMethod, loc.String(), bytes.NewBufferString(req.Body))
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create HTTP request")
+		return nil, fmt.Errorf("failed to create HTTP request: %v", err)
+		// return nil, errors.Wrap(err, "failed to create HTTP request")
 	}
 
 	for k, val := range req.Headers {
