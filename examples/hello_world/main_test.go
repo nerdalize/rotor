@@ -43,7 +43,7 @@ func setLambdaEnv(tb testing.TB, name string) func() {
 }
 
 func TestGateway(t *testing.T) {
-	reset := setLambdaEnv(t, "gateway_env")
+	reset := setLambdaEnv(t, "env")
 	defer reset()
 
 	res, err := Handle([]byte(`{}`), &rotor.Invocation{
