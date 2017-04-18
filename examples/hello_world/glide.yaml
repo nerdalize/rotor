@@ -5,4 +5,4 @@ import:
 - package: github.com/advanderveer/go-dynamo
   version: 2877ce2a331c2fca17eaa07bd159353c8ded84b1
 - package: github.com/nerdalize/rotor
-  version: 4e2a2cdd0b0e470904eb53fda1215c3aead41780
+  version: 34cdef6a5b1618fdc93133ffedbbe6e97c89efba

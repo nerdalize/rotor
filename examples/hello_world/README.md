@@ -1,5 +1,5 @@
 # Rotor Hello world
-This example shows how rotor allows for deploying a DynamoDB powered API in uder 15 minutes.
+This example shows how rotor allows for deploying a DynamoDB powered API in under 15 minutes.
 
 ##  Dependencies
 To get this example to work you'll need to following installed an available in your `$PATH`:

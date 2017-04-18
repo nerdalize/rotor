@@ -18,21 +18,22 @@ function run_test { #test using terraform defined environment
 
 function run_install { #install go dependencies
 	command -v glide >/dev/null 2>&1 || { echo "executable 'glide' (dependency manager) must be installed: https://github.com/Masterminds/glide" >&2; exit 1; }
+	command -v terraform >/dev/null 2>&1 || { echo "executable 'terraform' (infrastructure manager) must be installed: https://www.terraform.io/" >&2; exit 1; }
 
 	echo "--> installing..."
 	glide install
+	terraform get
 }
 
-function run_build { #compile lambda handler
+function run_build { #compile Lambda package
 	command -v docker >/dev/null 2>&1 || { echo "executable 'docker' (container runtime client) must be installed: https://www.docker.com/" >&2; exit 1; }
 
 	echo "--> building..."
 	docker run --rm                                                             \
 		-e HANDLER=handler                                                      	\
 		-e PACKAGE=handler                                                      	\
-		-v $GOPATH:/go                                                           	\
-		-v $(pwd):/tmp                                                          	\
-		-w /go/src/github.com/microfactory/line/examples/hello_world                 \
+		-v $(pwd):/go/src/app                                                     \
+		-w /go/src/app                 \
 		eawsy/aws-lambda-go-shim:latest bash -c "go build -v -buildmode=plugin -ldflags='-w -s' -o handler.so; pack handler handler.so handler.zip"
 }
 
